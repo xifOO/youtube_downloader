@@ -1,30 +1,26 @@
 import pafy
 from django.shortcuts import render
 from django.template.defaultfilters import filesizeformat
-
 from .forms import UrlForm
+from .logic import return_video
 
 
-def get_url(request):
+def page_not_found_view(request):
+    return render(request, '404.html', status=404)
+
+
+def get_video(request):
     if request.method == "POST":
         form = UrlForm(request.POST)
         if form.is_valid():
-            video = pafy.new(form.cleaned_data["url"])
-            stream = video.streams
-            video_streams = []
-            for s in stream:
-                video_streams.append({
-                    "resolution": s.resolution,
-                    "video_url": s.url + "&title=" + video.title,
-                    "extension": s.extension,
-                    "size": filesizeformat(s.get_filesize()),
-                    "title": video.title
-                })
-            context = {
-                "form": form,
-                "streams": video_streams
-            }
-            return render(request, "main.html", context)
+            try:
+                context = {
+                    "form": form,
+                    "streams": return_video(form.cleaned_data["url"])
+                }
+                return render(request, "main.html", context)
+            except Exception:
+                return render(request, "404.html")
     else:
         form = UrlForm()
     return render(request, "main.html", {"form": form})
